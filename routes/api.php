@@ -15,8 +15,14 @@ Route::prefix('auth')->group(function () {
     Route::post('/register/patient', [AuthController::class, 'registerPatient']);
     Route::post('/register/doctor', [AuthController::class, 'registerDoctor']);
     Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/logout', [AuthController::class, 'logout']);
 
+       Route::prefix('forgot-password')->group(function () {
+        Route::post('/send-code', [AuthController::class, 'sendResetCode']);
+        Route::post('/verify-code', [AuthController::class, 'verifyResetCode']);
+        Route::post('/reset', [AuthController::class, 'resetPassword']);
+        Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+
+    });
     Route::post('/send-email-verification', [AuthController::class, 'sendEmailVerification']);
     Route::get('/verify-email/{id}/{hash}', [EmailVerification::class, 'verify'])
         ->name('verification.verify');

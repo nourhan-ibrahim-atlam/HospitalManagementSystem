@@ -2,19 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\UserRegistered;
 use App\Http\Requests\RegisterDoctorRequest;
 use App\Http\Requests\RegisterPatientRequest;
 use App\Models\Doctor;
 use App\Models\Patient;
 use App\Models\User;
+use App\Notifications\ResetPasswordNotification;
 use App\Notifications\TestEmail;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -51,7 +56,7 @@ class AuthController extends Controller
             DB::commit();
 
             event(new Registered($user));
-
+                // UserRegistered::dispatch($user);
 
             return response()->json([
                 'message' => 'Patient registered successfully',
@@ -321,4 +326,119 @@ class AuthController extends Controller
             'message' => 'Password changed successfully.'
         ]);
     }
+
+    public function sendResetCode(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email|exists:users,email',
+    ]);
+
+    $user = User::where('email', $request->email)->first();
+
+    $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+    Cache::put('reset_code_' . $user->email, $code, now()->addMinutes(10));
+
+    try {
+        $user->notify(new ResetPasswordNotification($code));
+
+        return response()->json([
+            'message' => 'Password reset code sent successfully.',
+            'email' => $user->email,
+            'expires_in_minutes' => 10
+        ], 200);
+    } catch (\Exception $e) {
+        Log::error('Failed to send reset code: ' . $e->getMessage());
+
+        return response()->json([
+            'message' => 'Failed to send reset code. Please try again later.'
+        ], 500);
+    }
+}
+public function verifyResetCode(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email|exists:users,email',
+        'code' => 'required|string|size:6',
+    ]);
+
+    $user = User::where('email', $request->email)->first();
+
+    $cachedCode = Cache::get('reset_code_' . $user->email);
+
+    if (!$cachedCode) {
+        return response()->json([
+            'message' => 'Reset code has expired. Please request a new one.'
+        ], 400);
+    }
+
+    if ($cachedCode !== $request->code) {
+        return response()->json([
+            'message' => 'Invalid reset code.'
+        ], 400);
+    }
+
+    $resetToken = Str::random(60);
+    Cache::put('reset_token_' . $user->email, $resetToken, now()->addMinutes(10));
+
+    return response()->json([
+        'message' => 'Code verified successfully.',
+        'reset_token' => $resetToken,
+        'expires_in_minutes' => 10
+    ], 200);
+}
+
+public function resetPassword(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email|exists:users,email',
+        'reset_token' => 'required|string',
+        'password' => 'required|string|min:8|confirmed',
+    ]);
+
+    $user = User::where('email', $request->email)->first();
+
+    $cachedToken = Cache::get('reset_token_' . $user->email);
+
+    if (!$cachedToken || $cachedToken !== $request->reset_token) {
+        return response()->json([
+            'message' => 'Invalid or expired reset token. Please request a new reset code.'
+        ], 400);
+    }
+
+    $user->password = Hash::make($request->password);
+    $user->save();
+
+    Cache::forget('reset_code_' . $user->email);
+    Cache::forget('reset_token_' . $user->email);
+
+    $user->tokens()->delete();
+
+    return response()->json([
+        'message' => 'Password reset successfully. Please login with your new password.'
+    ], 200);
+}
+
+
+public function forgotPassword(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email|exists:users,email',
+    ]);
+
+    $status = Password::sendResetLink(
+        $request->only('email')
+    );
+
+    if ($status === Password::RESET_LINK_SENT) {
+        return response()->json([
+            'message' => __($status),
+            'email' => $request->email
+        ], 200);
+    }
+
+    return response()->json([
+        'message' => __($status)
+    ], 400);
+}
 }

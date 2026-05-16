@@ -23,14 +23,12 @@ class PatientController extends Controller
 
         $user = $request->user();
 
-        // Debug: Check doctor relationship
         if ($user->role === 'doctor') {
             \Log::info('Doctor user:', ['user_id' => $user->id]);
 
             if ($user->doctor) {
                 \Log::info('Doctor record:', ['doctor_id' => $user->doctor->id]);
 
-                // Check emergency visits for this doctor
                 $emergencyVisits = EmergencyVisit::where('doctor_id', $user->doctor->id)->get();
                 \Log::info('Emergency visits count:', ['count' => $emergencyVisits->count()]);
             } else {
