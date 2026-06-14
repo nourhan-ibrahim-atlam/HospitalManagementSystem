@@ -2,137 +2,45 @@
 
 namespace Database\Seeders;
 
-use App\Models\Doctor;
-use App\Models\EmergencyVisit;
-use App\Models\FingerPrintSimulation;
-use App\Models\MedicalHistory;
-use App\Models\Patient;
-use App\Models\UpdateRequest;
-use App\Models\User;
-use App\Models\LabTest;
-use App\Models\BloodTestParameter;
-use App\Models\Treatment;
-use App\Models\Prescription;
-use App\Models\Diagnosis;
-use App\Models\VitalSign;
-use App\Models\Immunization;
-use App\Models\Allergy;
-use App\Models\Surgery;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
+     *
+     * Run in order - each seeder checks if already run (idempotent).
+     * Password for all generated accounts: password123
      */
     public function run(): void
     {
-        // Create Admin User
-        User::factory()->admin()->create([
-            'national_id' => '12345678912345',
-            'fname' => "Zaid",
-            'lname' => "Mohammed",
-            "email" => "ZaidMo2003@gmail.com",
-            'phone' => '+201064922104',
-            'password' => bcrypt('admin123'),
-            'phone_verified_at' => now(),
-            'email_verified_at' => now(),
+        $this->command->info('');
+        $this->command->info('╔══════════════════════════════════════════════╗');
+        $this->command->info('║     Elhaqni Development Database Seeder      ║');
+        $this->command->info('╚══════════════════════════════════════════════╝');
+        $this->command->info('');
+
+        $this->call([
+            AdminSeeder::class,
+            DoctorSeeder::class,
+            PatientSeeder::class,
+            EmergencyVisitSeeder::class,
+            MedicalHistorySeeder::class,
+            PrescriptionSeeder::class,
+            NotificationSeeder::class,
+            UpdateRequestSeeder::class,
         ]);
 
-
-        // Create 20 doctors
-        $doctors = Doctor::factory(20)->create();
-
-
-        Patient::factory(100)->create()->each(function (Patient $patient) use ($doctors) {
-
-            $medicalHistories = MedicalHistory::factory(rand(1, 5))
-                ->create(['patient_id' => $patient->id])
-                ->each(function ($medicalHistory) use ($patient, $doctors) {
-
-
-                    $labTests = LabTest::factory(rand(2, 5))
-                        ->create([
-                            'patient_id' => $patient->id,
-                            'doctor_id' => $doctors->random()->id,
-                            'medical_history_id' => $medicalHistory->id
-                        ])
-                        ->each(function ($labTest) {
-
-                            BloodTestParameter::factory(rand(3, 8))
-                                ->create(['lab_test_id' => $labTest->id]);
-                        });
-
-                    Treatment::factory(rand(1, 3))
-                        ->create([
-                            'patient_id' => $patient->id,
-                            'doctor_id' => $doctors->random()->id,
-                            'medical_history_id' => $medicalHistory->id
-                        ]);
-
-
-                    Prescription::factory(rand(1, 2))
-                        ->create([
-                            'patient_id' => $patient->id,
-                            'doctor_id' => $doctors->random()->id,
-                            'medical_history_id' => $medicalHistory->id
-                        ]);
-
-
-                    Diagnosis::factory(rand(1, 2))
-                        ->create([
-                            'patient_id' => $patient->id,
-                            'doctor_id' => $doctors->random()->id,
-                            'medical_history_id' => $medicalHistory->id
-                        ]);
-
-                    VitalSign::factory()
-                        ->create([
-                            'patient_id' => $patient->id,
-                            'medical_history_id' => $medicalHistory->id
-                        ]);
-                });
-
-            UpdateRequest::factory(rand(0, 2))
-                ->create(['patient_id' => $patient->id]);
-
-            UpdateRequest::factory(rand(0, 2))
-                ->approved()
-                ->create([
-                    'patient_id' => $patient->id,
-                    'reviewed_by' => $doctors->random()->id,
-                ]);
-
-
-            $visits = rand(0, 5);
-            if ($visits > 0) {
-                EmergencyVisit::factory($visits)->create([
-                    'patient_id' => $patient->id,
-                    'doctor_id' => $doctors->random()->id,
-                ]);
-            }
-
-
-            FingerPrintSimulation::factory()->create(['patient_id' => $patient->id]);
-
-
-            Immunization::factory(rand(2, 6))
-                ->create([
-                    'patient_id' => $patient->id,
-                    'doctor_id' => $doctors->random()->id,
-                ]);
-
-
-            Allergy::factory(rand(1, 4))
-                ->create(['patient_id' => $patient->id]);
-
-            if (rand(1, 100) <= 30) {
-                Surgery::factory(rand(0, 2))
-                    ->create(['patient_id' => $patient->id]);
-            }
-        });
+        $this->command->info('');
+        $this->command->info('✅ All seeders completed successfully!');
+        $this->command->info('');
+        $this->command->info('Test credentials (all passwords: password123):');
+        $this->command->info('  Admin:   national_id=0000000000');
+        $this->command->info('  Admin 2: national_id=10000000000001');
+        $this->command->info('  Doctor:  national_id=1234567890 (existing approved doctor)');
+        $this->command->info('  Doctor:  national_id=20000000000001 (seeded approved)');
+        $this->command->info('  Patient: national_id=9876543210 (existing)');
+        $this->command->info('  Patient: national_id=30000000000001 (seeded)');
+        $this->command->info('');
     }
 }
