@@ -19,6 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ]);
 
+        // Exclude API routes from CSRF protection (they use token authentication)
+        $middleware->validateCsrfTokens(except: [
+            'api/*',
+        ]);
+
         $middleware->alias([
             'check.admin' => \App\Http\Middleware\CheckAdmin::class,
         ]);

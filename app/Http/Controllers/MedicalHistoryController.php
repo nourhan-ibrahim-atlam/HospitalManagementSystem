@@ -25,6 +25,7 @@ class MedicalHistoryController extends Controller
     public function index(Request $request)
     {
         $patientId = $request->input('patient_id');
+        $visitType = $request->input('visit_type'); // ← أضف ده
 
         $query = MedicalHistory::with([
             'patient.user',
@@ -38,6 +39,10 @@ class MedicalHistoryController extends Controller
 
         if ($patientId) {
             $query->where('patient_id', $patientId);
+        }
+
+        if ($visitType) { // ← أضف ده
+            $query->where('visit_type', $visitType);
         }
 
         $user = Auth::user();
